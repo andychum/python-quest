@@ -24,7 +24,7 @@ jobs:
       - name: Build static site
         run: |
           mkdir -p _site/pyodide
-          cp index.html python-worker.js .nojekyll _site/
+          cp index.html intermediate.js python-worker.js .nojekyll _site/
           archive=$(npm pack pyodide@0.27.7 --silent)
           tar -xzf "$archive" --strip-components=1 -C _site/pyodide \
             package/pyodide.js package/pyodide.asm.js package/pyodide.asm.wasm \
