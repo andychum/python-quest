@@ -9,7 +9,7 @@ permissions:
   id-token: write
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   deploy:
     environment:
@@ -21,10 +21,18 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+      - name: Build static site
+        run: |
+          mkdir -p _site/pyodide
+          cp index.html python-worker.js .nojekyll _site/
+          archive=$(npm pack pyodide@0.27.7 --silent)
+          tar -xzf "$archive" --strip-components=1 -C _site/pyodide \
+            package/pyodide.js package/pyodide.asm.js package/pyodide.asm.wasm \
+            package/pyodide-lock.json package/python_stdlib.zip
       - name: Upload static site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

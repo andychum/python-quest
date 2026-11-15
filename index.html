@@ -211,7 +211,8 @@ const ORIGINAL_SOLUTIONS = [["points = 7\npoints += 5\nprint(points)","language 
 WORLDS.forEach((world,i)=>{world.labs.forEach((lab,j)=>{lab[4]=ORIGINAL_SOLUTIONS[i][j];lab[5]='Read each line from top to bottom. Notice the variables, Python keywords and the value sent to print(). Compare it with the expected output.';});world.labs.push(PERSONAL_LABS[i]);});
 </script><script>
 (()=>{'use strict';
-const KEY='python-quest-v2';let state;try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch{state={}};state.answers??={};state.lessons??={};state.bugs??={};state.labs??={};state.xp??=0;state.attempts??={};let screen={world:-1,mode:'dashboard',index:0};let runner=null,runnerReady=false,runtimeLoading=false,runtimeTimer=null;
+const KEY='python-quest-v2';let state;try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch{state={}};state.answers??={};state.lessons??={};state.bugs??={};state.labs??={};state.xp??=0;state.attempts??={};let screen={world:-1,mode:'dashboard',index:0};let runner = null;
+let runQueue = Promise.resolve();
 const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch{}};const qid=(w,i)=>`q-${w}-${i}`;const bid=(w,i)=>`b-${w}-${i}`;const lid=(w,i)=>`l-${w}-${i}`;const done=(w)=>{let p=0,world=WORLDS[w];world.lessons.forEach((_,i)=>p+=!!state.lessons[lid(w,i)]);world.quiz.forEach((_,i)=>p+=state.answers[qid(w,i)]===iCorrect(world.quiz[i]));world.bugs.forEach((_,i)=>p+=!!state.bugs[bid(w,i)]);world.labs.forEach((_,i)=>p+=!!state.labs[lid(w,i)]);return Math.round(p/(world.lessons.length+world.quiz.length+world.bugs.length+world.labs.length)*100)};const iCorrect=q=>q[3];const score=()=>WORLDS.reduce((a,_,i)=>a+done(i),0)/WORLDS.length;function award(id,amount){if(!state.attempts['reward-'+id]){state.xp+=amount;state.attempts['reward-'+id]=true}}function nav(){document.getElementById('worldnav').innerHTML=WORLDS.map((w,i)=>`<button class="sideitem ${screen.world===i?'active':''}" data-world="${i}"><span class="number">${String(i+1).padStart(2,'0')}</span><span>${esc(w.title)}</span><span class="tick">${done(i)===100?'✓':''}</span></button>`).join('')};function toast(msg){const el=document.createElement('div');el.className='toast';el.textContent=msg;document.body.append(el);setTimeout(()=>el.remove(),2300)};
 function home(){screen={world:-1,mode:'dashboard',index:0};const totalLessons=Object.keys(state.lessons).length, solved=Object.values(state.answers).length, bugs=Object.keys(state.bugs).length,labs=Object.keys(state.labs).length;document.getElementById('main').innerHTML=`<div class="hero"><div><span class="tag">LEARN • READ • DEBUG • BUILD</span><h1>Your journey from zero<br>to AI engineer.</h1><p>Understand the Python behind AI, LLMs and tool-using agents.</p></div><div class="heroaccent">🚀</div></div><div class="stats"><div class="stat"><strong>${Math.round(score())}%</strong><span class="small">Total mastery</span></div><div class="stat"><strong>${state.xp}</strong><span class="small">XP earned</span></div><div class="stat"><strong>${solved}/80</strong><span class="small">Quiz attempts</span></div><div class="stat"><strong>${labs}/30</strong><span class="small">Code labs passed</span></div></div><div class="card" style="margin-top:18px"><div class="meta"><div><h2 style="margin:0">Your learning path</h2><p class="small">10 worlds • 40 lessons • 80 questions • 20 bug hunts • 30 coding labs</p></div><button class="btn primary" data-world="${Math.max(0,WORLDS.findIndex((_,i)=>done(i)<100))}">Continue learning →</button></div><div class="progress" style="margin-top:14px"><div class="fill" style="width:${score()}%"></div></div></div><h2 class="sectionTitle">Choose a world</h2><div class="worldgrid">${WORLDS.map((w,i)=>`<button class="worldcard" data-world="${i}" style="border-top:3px solid ${w.colour}"><div class="worldicon">${w.icon}</div><h3>${String(i+1).padStart(2,'0')}. ${esc(w.title)}</h3><p>${esc(w.subtitle)}</p><div class="meta"><span class="small">${done(i)}% mastery</span><span class="badge">${done(i)===100?'COMPLETE':'PLAY →'}</span></div><div class="progress" style="margin-top:9px"><div class="fill" style="width:${done(i)}%;background:${w.colour}"></div></div></button>`).join('')}</div><div class="card" style="margin-top:20px"><h3>How to play</h3><p class="small">1. Read each short lesson. 2. Answer code-reading questions. 3. Fix deliberately broken code. 4. Run and repair genuine Python in the Code Lab. Your progress saves in this browser; a new device will not automatically inherit it.</p><p class="small">The Code Lab downloads a free Python interpreter into your browser on first use. It needs an internet connection for that download. No account or paid API is required.</p></div>`;nav()}
 function goWorld(w,mode='lessons'){screen={world:w,mode,index:0};render()}
@@ -221,42 +222,44 @@ if(screen.mode==='quiz'){panel.innerHTML=`<p class="intro">Read the code careful
 if(screen.mode==='bugs'){panel.innerHTML=`<p class="intro">Inspect the broken code and the reported fault. Reveal the smallest working repair, then explain it to yourself before marking it solved.</p>${world.bugs.map((b,i)=>`<article class="card"><div class="meta"><span class="badge">CASE ${i+1}/2</span><span class="small">${state.bugs[bid(w,i)]?'✓ Solved':'Open case'}</span></div><h2>🐛 ${esc(b[0])}</h2><pre class="code">${esc(b[1])}</pre><p><strong>Symptom:</strong> ${esc(b[2])}</p><div class="btnbar"><button class="btn" data-reveal="${i}">${screen.revealBug===i?'Hide solution':'Show repair & explanation'}</button><button class="btn primary" data-bugdone="${i}" ${state.bugs[bid(w,i)]?'disabled':''}>${state.bugs[bid(w,i)]?'✓ Solved':'I understand the repair +20 XP'}</button></div>${screen.revealBug===i?`<div style="margin-top:14px"><h3>Working repair</h3><pre class="code">${esc(b[3])}</pre><div class="note">${esc(b[4])}</div><div class="btnbar"><button class="btn" data-copyfix="${i}">Load repaired code in Lab ↗</button></div></div>`:''}</article>`).join('')}`}
 if(screen.mode==='labs'){panel.innerHTML=`<div class="warning">🔐 Real Python runs in a temporary browser worker using Pyodide. The first run needs internet access. This is a learning environment, not a security boundary for untrusted code; never enter passwords or private API keys. Runs are stopped after 10 seconds.</div><p class="intro">Write or edit the Python code, then press Run & Check. Output must match the expected output exactly (ignoring surrounding whitespace). The checker tests visible output, so passing does not prove the implementation is otherwise correct.</p>${world.labs.map((lab,i)=>`<article class="card"><div class="meta"><span class="badge">LAB ${i+1}/${world.labs.length}</span><span class="small">${state.labs[lid(w,i)]?'✓ Passed':'Ready to code'}</span></div><h2>${esc(lab[0])}</h2><p class="intro">${esc(lab[1])}</p><div class="split"><div><p class="small">PYTHON EDITOR</p><textarea class="editor" id="editor-${i}" spellcheck="false" aria-label="Python code for lab ${i+1}">${esc(state['code-'+lid(w,i)]??lab[2])}</textarea></div><div><p class="small">EXPECTED OUTPUT</p><pre class="output">${esc(lab[3])}</pre><p class="small">YOUR OUTPUT</p><pre class="output" id="output-${i}">Press Run & Check to begin.</pre></div></div><div class="btnbar"><button class="btn primary" data-run="${i}">▶ Run & Check</button><button class="btn" data-resetlab="${i}">Reset editor</button><button class="btn" data-showanswer="${i}">💡 Show answer & explanation</button><span class="small" id="runtime-status-${i}"></span></div><div id="solution-${i}" class="note" style="display:none;white-space:pre-wrap;margin-top:12px"></div></article>`).join('')}`}
 }
-function ensureWorker(){
-if(runnerReady)return Promise.resolve();
-if(runtimeLoading)return runtimeLoading;
-const workerSource=`
-let py=null;
-self.onmessage=async e=>{
-const m=e.data;
-if(m.kind==='init'){
-try{
-try{importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js')}
-catch(first){importScripts('https://unpkg.com/pyodide@0.27.7/pyodide.js')}
-try{py=await loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/'})}catch(networkError){py=await loadPyodide({indexURL:'https://unpkg.com/pyodide@0.27.7/'})}
-self.postMessage({kind:'ready'});
-}catch(err){self.postMessage({kind:'error',error:String(err)})}
-}else if(m.kind==='run'){
-let out=[];
-try{
-py.setStdout({batched:s=>out.push(s)});
-py.setStderr({batched:s=>out.push(s)});
-await py.runPythonAsync(m.code);
-self.postMessage({kind:'result',id:m.id,output:out.join('\\n')});
-}catch(err){self.postMessage({kind:'result',id:m.id,output:out.join('\\n')+(out.length?'\\n':'')+String(err),error:true})}
-}
-};`;
-runtimeLoading=new Promise((resolve,reject)=>{
-let settled=false;let timer;
-try{
-runner=new Worker(URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'})));
-timer=setTimeout(()=>fail('Python took too long to download. Check your internet connection or try Chrome or Firefox.'),90000);
-function fail(message){if(settled)return;settled=true;clearTimeout(timer);runner?.terminate();runner=null;runnerReady=false;runtimeLoading=false;reject(new Error(message))}
-runner.onmessage=e=>{if(e.data.kind==='ready'){if(settled)return;settled=true;clearTimeout(timer);runnerReady=true;runtimeLoading=false;resolve()}else if(e.data.kind==='error')fail('Interpreter failed to load: '+e.data.error+'. Check that your network permits cdn.jsdelivr.net and unpkg.com.')};
-runner.onerror=()=>fail('Browser blocked the Python worker. Open the hosted GitHub Pages version instead of a local file, and check browser extensions.');
-runner.postMessage({kind:'init'});
-}catch(err){if(timer)clearTimeout(timer);runtimeLoading=false;reject(new Error('Unable to create Python runner: '+String(err)))}
-});
-return runtimeLoading;
+function executePython(code, status) {
+  return new Promise((resolve, reject) => {
+    const loading = !runner;
+    let timer;
+    function fail(message) {
+      clearTimeout(timer);
+      runner?.terminate();
+      runner = null;
+      reject(new Error(message));
+    }
+    function startExecutionTimer() {
+      clearTimeout(timer);
+      status.textContent = 'Running…';
+      timer = setTimeout(() => fail('Execution timed out after 10 seconds. Check for an infinite loop.'), 10000);
+    }
+
+    try {
+      if (loading) {
+        status.textContent = 'Loading Python…';
+        runner = new Worker('./python-worker.js');
+        timer = setTimeout(() => fail('Python took too long to load. Check your connection and try again.'), 90000);
+      } else {
+        startExecutionTimer();
+      }
+      runner.onmessage = ({ data }) => {
+        if (data.kind === 'ready') startExecutionTimer();
+        if (data.kind === 'load-error') fail('Unable to load Python. Refresh the page or check your connection.');
+        if (data.kind === 'result') {
+          clearTimeout(timer);
+          resolve(data);
+        }
+      };
+      runner.onerror = () => fail('The Python worker stopped. Try Run & Check again.');
+      runner.postMessage({ code });
+    } catch {
+      fail('Unable to start Python. Open Python Quest from its hosted web address and try again.');
+    }
+  });
 }
 function explainPythonMistake(message, expected, actual){
 if(message.includes('SyntaxError'))return 'Python could not read the code. Check brackets, quotes, colons and spelling. Think of syntax like punctuation in a sentence.';
@@ -268,13 +271,48 @@ if(message.includes('IndexError'))return 'You asked for a position outside a lis
 if(message.includes('ValueError'))return 'A value was unsuitable for the operation. For example, int("hello") cannot make a number.';
 if(message.includes('ZeroDivisionError'))return 'The programme tried to divide by zero. Check the number underneath the division.';
 if(message.includes('AssertionError'))return 'A test failed. Compare the function result with the expected result.';
+if(expected === null)return 'Read the last line of the Python error, then check the line it points to.';
 if(actual.trim()!==expected.trim())return 'The code ran, but the printed result is different. Check each variable, your if conditions and your print statement. Compare line by line with the expected output, or press Show answer & explanation.';
 return '';
 }
-async function runCode(code,expected,output,status,onPass){status.textContent='Loading or preparing Python…';try{await ensureWorker()}catch(e){output.textContent=e.message+'\n\nThe answer button still works even without the interpreter.';status.textContent='Unable to load Python';return}status.textContent='Running…';let id=Date.now()+'-'+Math.random();let finished=false;return await new Promise(resolve=>{const old=runner.onmessage;const timeout=setTimeout(()=>{if(finished)return;finished=true;runner.terminate();runner=null;runnerReady=false;output.textContent='Execution timed out after 10 seconds. Check for an infinite loop.';status.textContent='Time limit exceeded';resolve()},10000);runner.onmessage=e=>{if(e.data.kind!=='result'||e.data.id!==id)return;finished=true;clearTimeout(timeout);runner.onmessage=old;output.textContent=e.data.output||'(No printed output)';const success=!e.data.error&&e.data.output.trim()===expected.trim();status.textContent=success?'✓ Output matches':'Output does not match yet';if(!success){output.textContent+='\n\n💡 SIMPLE EXPLANATION: '+explainPythonMistake(e.data.output,expected,e.data.output)}if(success)onPass();resolve()};runner.postMessage({kind:'run',code,id})})}
+async function runCode(code, expected, output, status, onPass) {
+  status.textContent = 'Waiting for Python…';
+  const run = runQueue.then(() => executePython(code, status));
+  runQueue = run.catch(() => {});
+  try {
+    const result = await run;
+    const actual = result.output.trim();
+    const success = !result.error && (expected === null || actual === expected.trim());
+    output.textContent = [actual || '(No printed output)', result.stderr.trim(), result.error]
+      .filter(Boolean).join('\n\n');
+    status.textContent = result.error ? 'Python error' : success ? (expected === null ? '✓ Run completed' : '✓ Output matches') : 'Output does not match yet';
+    if (success) {
+      onPass();
+    } else {
+      output.textContent += '\n\n💡 SIMPLE EXPLANATION: ' +
+        explainPythonMistake(result.error || '', expected, actual);
+    }
+  } catch (error) {
+    output.textContent = error.message;
+    status.textContent = 'Run stopped';
+  }
+}
 function review(){screen={world:-1,mode:'review',index:0};let misses=[];WORLDS.forEach((world,w)=>world.quiz.forEach((q,i)=>{if(state.answers[qid(w,i)]!==undefined&&state.answers[qid(w,i)]!==q[3])misses.push({w,i,q})}));document.getElementById('main').innerHTML=`<div class="hero"><div><span class="tag">ADAPTIVE REVISION</span><h1>🎯 Review your mistakes</h1><p>Target the questions you missed, one concept at a time.</p></div></div>${misses.length?`<div class="card"><p class="small">${misses.length} question(s) to revisit. Select a world to practise them again.</p>${misses.map(x=>`<div style="padding:11px 0;border-bottom:1px solid var(--line)"><strong>${esc(x.q[0])}</strong><div class="small">World ${x.w+1}: ${esc(WORLDS[x.w].title)}</div><div class="btnbar"><button class="btn" data-retry="${x.w}:${x.i}">Retry this question</button></div></div>`).join('')}</div>`:`<div class="card empty">🎉 No missed quiz questions recorded. Complete more quizzes to build your review list.</div>`}<button class="btn" data-home="1">← Dashboard</button>`;nav()}
-function loadIntoLab(code){screen.mode='labs';render();const editor=document.getElementById('editor-0');if(editor){editor.value=code;editor.focus();toast('Code loaded into the first lab editor.')}}
-document.addEventListener('click',async e=>{const button=e.target.closest('button');if(!button)return;const d=button.dataset;if(d.home){home();return}if(d.world!==undefined){goWorld(Number(d.world));document.getElementById('sidebar').classList.remove('show');return}if(d.mode){screen.mode=d.mode;screen.revealBug=-1;render();return}if(d.review){review();return}if(d.reset){if(confirm('Delete all Python Quest progress on this browser?')){localStorage.removeItem(KEY);location.reload()}return}if(d.lesson!==undefined){let key=lid(screen.world,Number(d.lesson));if(!state.lessons[key]){state.lessons[key]=true;award(key,10);save();toast('Lesson complete! +10 XP')}render();return}if(d.loadexample!==undefined){const code=WORLDS[screen.world].lessons[Number(d.loadexample)][2];loadIntoLab(code);return}if(d.showquiz!==undefined){const i=Number(d.showquiz),q=WORLDS[screen.world].quiz[i],box=document.getElementById("quiz-solution-"+i);box.style.display=box.style.display==="none"?"block":"none";box.textContent="Answer: "+q[2][q[3]]+". "+q[4];return}if(d.answer){let [i,j]=d.answer.split(':').map(Number),key=qid(screen.world,i),q=WORLDS[screen.world].quiz[i];if(state.answers[key]!==undefined)return;state.answers[key]=j;if(j===q[3])award(key,15);save();renderMode();return}if(d.reveal!==undefined){screen.revealBug=screen.revealBug===Number(d.reveal)?-1:Number(d.reveal);renderMode();return}if(d.bugdone!==undefined){const key=bid(screen.world,Number(d.bugdone));if(screen.revealBug!==Number(d.bugdone)){toast('Reveal and study the repair before marking it complete.');return}if(!state.bugs[key]){state.bugs[key]=true;award(key,20);save();toast('Bug explained! +20 XP')}render();return}if(d.copyfix!==undefined){loadIntoLab(WORLDS[screen.world].bugs[Number(d.copyfix)][3]);return}if(d.showanswer!==undefined){const i=Number(d.showanswer);const lab=WORLDS[screen.world].labs[i];const box=document.getElementById("solution-"+i);if(box){box.style.display=box.style.display==="none"?"block":"none";box.textContent="WORKED ANSWER:\n"+lab[4]+"\n\nEXPLANATION:\n"+lab[5]+"\n\nTip: Compare your own code with this solution line by line.";};return}if(d.resetlab!==undefined){let i=Number(d.resetlab);let key='code-'+lid(screen.world,i);delete state[key];save();renderMode();return}if(d.run!==undefined){let i=Number(d.run),key=lid(screen.world,i),lab=WORLDS[screen.world].labs[i],editor=document.getElementById('editor-'+i),output=document.getElementById('output-'+i),status=document.getElementById('runtime-status-'+i);state['code-'+key]=editor.value;save();button.disabled=true;await runCode(editor.value,lab[3],output,status,()=>{if(!state.labs[key]){state.labs[key]=true;award(key,30);save();toast('Lab passed! +30 XP')}});button.disabled=false;return}if(d.retry){let [w,i]=d.retry.split(':').map(Number);delete state.answers[qid(w,i)];save();goWorld(w,'quiz');setTimeout(()=>{const target=document.querySelectorAll('.qbox')[i];target?.scrollIntoView({behavior:'smooth',block:'start'})},30);return}});
-document.addEventListener('input',e=>{if(e.target.matches('textarea.editor')){let i=Number(e.target.id.split('-')[1]);state['code-'+lid(screen.world,i)]=e.target.value;save()}});document.getElementById('menubtn').onclick=()=>document.getElementById('sidebar').classList.toggle('show');home();
+function loadIntoLab(code){screen.mode='labs';render();const panel=document.getElementById('panel');
+const practice=document.createElement('article');
+practice.className='card';
+practice.innerHTML='<h2>Python practice</h2><textarea class="editor" aria-label="Practice code" spellcheck="false"></textarea><div class="btnbar"><button class="btn primary">▶ Run code</button><span class="small"></span></div><pre class="output"></pre>';
+const editor=practice.querySelector('textarea');
+const button=practice.querySelector('button');
+editor.value=code;
+button.onclick=async()=>{
+  button.disabled=true;
+  await runCode(editor.value,null,practice.querySelector('pre'),practice.querySelector('span'),()=>{});
+  button.disabled=false;
+};
+panel.prepend(practice);
+editor.focus()}
+document.addEventListener('click',async e=>{const button=e.target.closest('button');if(!button)return;const d=button.dataset;if(d.home){home();return}if(d.world!==undefined){goWorld(Number(d.world));document.getElementById('sidebar').classList.remove('show');return}if(d.mode){screen.mode=d.mode;screen.revealBug=-1;render();return}if(d.review){review();return}if(d.reset){if(confirm('Delete all Python Quest progress on this browser?')){localStorage.removeItem(KEY);location.reload()}return}if(d.lesson!==undefined){let key=lid(screen.world,Number(d.lesson));if(!state.lessons[key]){state.lessons[key]=true;award('lesson-'+key,10);save();toast('Lesson complete! +10 XP')}render();return}if(d.loadexample!==undefined){const code=WORLDS[screen.world].lessons[Number(d.loadexample)][2];loadIntoLab(code);return}if(d.showquiz!==undefined){const i=Number(d.showquiz),q=WORLDS[screen.world].quiz[i],box=document.getElementById("quiz-solution-"+i);box.style.display=box.style.display==="none"?"block":"none";box.textContent="Answer: "+q[2][q[3]]+". "+q[4];return}if(d.answer){let [i,j]=d.answer.split(':').map(Number),key=qid(screen.world,i),q=WORLDS[screen.world].quiz[i];if(state.answers[key]!==undefined)return;state.answers[key]=j;if(j===q[3])award(key,15);save();renderMode();return}if(d.reveal!==undefined){screen.revealBug=screen.revealBug===Number(d.reveal)?-1:Number(d.reveal);renderMode();return}if(d.bugdone!==undefined){const key=bid(screen.world,Number(d.bugdone));if(screen.revealBug!==Number(d.bugdone)){toast('Reveal and study the repair before marking it complete.');return}if(!state.bugs[key]){state.bugs[key]=true;award(key,20);save();toast('Bug explained! +20 XP')}render();return}if(d.copyfix!==undefined){loadIntoLab(WORLDS[screen.world].bugs[Number(d.copyfix)][3]);return}if(d.showanswer!==undefined){const i=Number(d.showanswer);const lab=WORLDS[screen.world].labs[i];const box=document.getElementById("solution-"+i);if(box){box.style.display=box.style.display==="none"?"block":"none";box.textContent="WORKED ANSWER:\n"+lab[4]+"\n\nEXPLANATION:\n"+lab[5]+"\n\nTip: Compare your own code with this solution line by line.";};return}if(d.resetlab!==undefined){let i=Number(d.resetlab);let key='code-'+lid(screen.world,i);delete state[key];save();document.getElementById('editor-'+i).value=WORLDS[screen.world].labs[i][2];return}if(d.run!==undefined){let i=Number(d.run),worldIndex=screen.world,key=lid(worldIndex,i),lab=WORLDS[worldIndex].labs[i],editor=document.getElementById('editor-'+i),output=document.getElementById('output-'+i),status=document.getElementById('runtime-status-'+i);state['code-'+key]=editor.value;save();button.disabled=true;await runCode(editor.value,lab[3],output,status,()=>{if(!state.labs[key]){state.labs[key]=true;award('lab-'+key,30);save();if(button.isConnected){button.closest('article').querySelector('.meta .small').textContent='✓ Passed';const mastery=document.querySelector('.hero strong');mastery.textContent=done(worldIndex)+'%';document.querySelector('#main > .progress .fill').style.width=done(worldIndex)+'%';nav()}toast('Lab passed! +30 XP')}});button.disabled=false;return}if(d.retry){let [w,i]=d.retry.split(':').map(Number);delete state.answers[qid(w,i)];save();goWorld(w,'quiz');setTimeout(()=>{const target=document.querySelectorAll('.qbox')[i];target?.scrollIntoView({behavior:'smooth',block:'start'})},30);return}});
+document.addEventListener('input',e=>{if(e.target.matches('textarea[id^=editor-]')){let i=Number(e.target.id.split('-')[1]);state['code-'+lid(screen.world,i)]=e.target.value;save()}});document.getElementById('menubtn').onclick=()=>document.getElementById('sidebar').classList.toggle('show');home();
 })();
 </script></body></html>
