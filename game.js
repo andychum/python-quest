@@ -79,13 +79,13 @@ function showHome() {
 }
 
 function renderConcepts(world) {
-  return `<p class="intro">Read the example and follow the explanation. Then try four short questions.</p>
+  return `<p class="intro">Read the example one step at a time. Then try four quick questions.</p>
     <div class="concepts">${world.concepts.map(([title, definition, code, trace]) => `
       <article class="card">
         <h2>${escapeHtml(title)}</h2>
         <p>${escapeHtml(definition)}</p>
         ${codeBlock(code)}
-        <div class="note"><strong>Follow the code</strong><p>${escapeHtml(trace)}</p></div>
+        <div class="note walkthrough"><strong>What happens, step by step</strong><ol>${trace.split('\n').map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol></div>
       </article>`).join('')}
     </div><div class="btnbar"><button class="btn primary" data-mode="quiz">Start multiple-choice practice →</button></div>`;
 }
